@@ -3,9 +3,7 @@ package main
 import (
 	"fmt"
 	"log"
-	"math/rand"
 	"net"
-	"time"
 )
 
 const (
@@ -21,7 +19,6 @@ func main() {
 		log.Fatal(err)
 	}
 	defer l.Close()
-	rand.Seed(time.Now().Unix())
 
 	for {
 		c, err := l.Accept()
