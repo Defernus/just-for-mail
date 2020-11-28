@@ -1,7 +1,9 @@
 package main
 
 const (
+	//SMTP commands
 	smtpCommandHelo      = "HELO"
+	smtpCommandEhlo      = "EHLO"
 	smtpCommandHelp      = "HELP"
 	smtpCommandVerify    = "VRFY"
 	smtpCommandQuit      = "QUIT"
@@ -9,10 +11,16 @@ const (
 	smtpCommandMailFrom  = "MAIL FROM"
 	smtpCommandRecipient = "RCPT TO"
 	smtpCommandData      = "DATA"
+
+	//ESMTP commands
+	esmtpCommandStartTLS = "STARTTLS" //not yet implemented
+	esmtpCommandAuth     = "AUTH" //not yet implemented
+	esmtpCommandBdat     = "BDAT" //not yet implemented
 )
 
 var supportedCommands = [...]string{
 	smtpCommandHelo,
+	smtpCommandEhlo,
 	smtpCommandHelp,
 	smtpCommandVerify,
 	smtpCommandQuit,
@@ -20,6 +28,8 @@ var supportedCommands = [...]string{
 	smtpCommandMailFrom,
 	smtpCommandRecipient,
 	smtpCommandData,
+	esmtpCommandStartTLS,
+	esmtpCommandAuth,
 }
 
 //SMTPRequest - SMTP request data

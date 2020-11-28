@@ -11,37 +11,47 @@ const (
 	connStageRecipientReseived = iota
 	connStageDataReseived      = iota
 
-	requestActionNext  = iota
-	requestActionData  = iota
-	requestActionClose = iota
+	connTypeSMTP  = iota
+	connTypeESMTP = iota
 
-	dataActionNextLine = iota
-	dataActionDataEnd  = iota
-	dataActionClose    = iota
+	requestActionNext     = iota
+	requestActionData     = iota
+	requestActionStartTLS = iota
+	requestActionClose    = iota
+
+	dataActionNext    = iota
+	dataActionDataEnd = iota
 )
 
 //RequestHandler - SMTPRequest handler
 type RequestHandler struct {
-	curentStage int
-	sender      string
-	recipients  []string
-	data        string
+	connType       int
+	curentStage    int
+	authorizedUser string
+	sender         string
+	recipients     []string
+	data           string
 }
 
 //NewRequestHandler - create new RequestHandler
 func NewRequestHandler() *RequestHandler {
 	return &RequestHandler{
-		curentStage: connStageStart,
-		sender:      "",
-		recipients:  []string{},
+		connType:       connTypeSMTP,
+		curentStage:    connStageStart,
+		sender:         "",
+		authorizedUser: "",
+		recipients:     []string{},
 	}
 }
 
 //HandleRequest - handle SMTPRequest and return response
 func (handler *RequestHandler) HandleRequest(request *SMTPRequest) (string, int) {
+	log.Printf("Command: %s, Body: %s\n", request.Command, request.Body)
 	switch request.Command {
 	case smtpCommandHelo:
 		return handler.handleHelo(request)
+	case smtpCommandEhlo:
+		return handler.handleEhlo(request)
 	case smtpCommandHelp:
 		return handler.handleHelp(request)
 	case smtpCommandVerify:
@@ -68,6 +78,14 @@ func (handler *RequestHandler) handleHelo(request *SMTPRequest) (string, int) {
 	return "250 OK", requestActionNext
 }
 
+func (handler *RequestHandler) handleEhlo(request *SMTPRequest) (string, int) {
+	if handler.curentStage == connStageStart {
+		handler.connType = connTypeESMTP
+		handler.curentStage = connStageHeloReseived
+	}
+	return "250 OK", requestActionNext
+}
+
 func (handler *RequestHandler) handleHelp(request *SMTPRequest) (string, int) {
 	return "214 https://tools.ietf.org/html/rfc5321", requestActionNext
 }
@@ -84,7 +102,7 @@ func (handler *RequestHandler) handleNoop(request *SMTPRequest) (string, int) {
 
 func (handler *RequestHandler) handleMailFrom(request *SMTPRequest) (string, int) {
 	if handler.curentStage == connStageStart {
-		return "503 send HELO first", requestActionNext
+		return "503 send HELO/EHLO first", requestActionNext
 	}
 
 	email := getEmailFromRequestBody(request.Body)
@@ -125,9 +143,18 @@ func (handler *RequestHandler) handleData(request *SMTPRequest) (string, int) {
 	return "354", requestActionData
 }
 
-//HandleData - handle data line by line
+//HandleData - handle data
 func (handler *RequestHandler) HandleData(data string) (string, int) {
-	handler.data = data
-	log.Println(data)
-	return "250 OK", dataActionDataEnd
+	if len(handler.data) != 0 {
+		handler.data += "\n"
+	}
+	handler.data += data
+
+	if data[len(data)-2:] == "\n." {
+		for _, r := range handler.recipients {
+			sendMessage(r, handler.sender, handler.data)
+		}
+		return "250 OK", dataActionDataEnd
+	}
+	return "", dataActionNext
 }

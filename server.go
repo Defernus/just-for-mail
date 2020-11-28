@@ -55,18 +55,13 @@ func handleConnection(conn net.Conn) {
 
 	for {
 		if isDataReceiving {
-			netData, err := read(conn)
+			data, err := read(conn)
 			if err != nil {
 				log.Fatal(err)
 			}
-			log.Printf("C: %s", netData)
 
-			response, action := handler.HandleData(netData)
-			switch action {
-			case dataActionClose:
-				conn.Close()
-				return
-			case dataActionDataEnd:
+			response, action := handler.HandleData(data)
+			if action == dataActionDataEnd {
 				isDataReceiving = false
 				if err := write(conn, response); err != nil {
 					log.Fatal(err)
@@ -89,6 +84,8 @@ func handleConnection(conn net.Conn) {
 			case requestActionClose:
 				conn.Close()
 				return
+			case requestActionStartTLS:
+				//TODO start TLS
 			case requestActionData:
 				isDataReceiving = true
 			}
